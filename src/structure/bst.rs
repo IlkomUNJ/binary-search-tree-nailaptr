@@ -216,7 +216,7 @@ impl BstNode {
     fn upgrade_weak_to_strong(node: Option<WeakBstNodeLink>) -> Option<BstNodeLink> {
         match node {
             None => None,
-            Some(x) => Some(x.upgrade().unwrap()),
+            Some(x) => x.upgrade(),
         }
     }
 
