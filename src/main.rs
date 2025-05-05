@@ -12,6 +12,9 @@ fn main() {
     //turn on to test the old code
     // test_binary_tree();
     test_binary_search_tree();
+    
+    // New tests for the BST operations
+    test_bst_operations();
 }
 
 fn test_binary_search_tree(){
@@ -114,6 +117,93 @@ fn test_binary_search_tree(){
     }
 }
 
+// Add this new function to test the BST operations
+fn test_bst_operations() {
+    println!("\n=== Testing BST Operations ===");
+    
+    // Create an empty BST
+    let root: BstNodeLink = BstNode::new_bst_nodelink(0);
+    root.borrow_mut().key = None; // Make it a NIL node initially
+    
+    // Test tree_insert
+    println!("Testing tree_insert operation:");
+    let keys_to_insert = vec![15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9];
+    
+    for &key in keys_to_insert.iter() {
+        root.borrow_mut().tree_insert(&root, key);
+        println!("Inserted key: {}", key);
+    }
+    
+    // Generate DOT file after insertions
+    let insert_tree_path = "bst_after_insert.dot";
+    generate_dotfile_bst(&root, insert_tree_path);
+    println!("BST after insertions saved to {}", insert_tree_path);
+    
+    // Test tree_search after insertions
+    println!("\nVerifying insertions with tree_search:");
+    let search_keys = vec![15, 9, 22, 4];
+    for &key in search_keys.iter() {
+        print!("Searching for key {}: ", key);
+        if let Some(node) = root.borrow().tree_search(&key) {
+            println!("Found -> {:?}", node.borrow().key);
+        } else {
+            println!("Not found");
+        }
+    }
+    
+    // Test tree_delete
+    println!("\nTesting tree_delete operation:");
+    
+    // Test case 1: Delete a leaf node (2)
+    println!("1. Deleting leaf node (2)");
+    let deleted = root.borrow_mut().tree_delete(&root, 2);
+    println!("   Deletion successful: {}", deleted);
+    
+    // Test case 2: Delete a node with one child (3)
+    println!("2. Deleting node with one child (3)");
+    let deleted = root.borrow_mut().tree_delete(&root, 3);
+    println!("   Deletion successful: {}", deleted);
+    
+    // Test case 3: Delete a node with two children (6)
+    println!("3. Deleting node with two children (6)");
+    let deleted = root.borrow_mut().tree_delete(&root, 6);
+    println!("   Deletion successful: {}", deleted);
+    
+    // Test case 4: Delete the root (15)
+    println!("4. Deleting root node (15)");
+    let deleted = root.borrow_mut().tree_delete(&root, 15);
+    println!("   Deletion successful: {}", deleted);
+    
+    // Test case 5: Try to delete a non-existent key
+    println!("5. Deleting non-existent node (99)");
+    let deleted = root.borrow_mut().tree_delete(&root, 99);
+    println!("   Deletion successful: {}", deleted);
+    
+    // Generate DOT file after deletions
+    let delete_tree_path = "bst_after_delete.dot";
+    generate_dotfile_bst(&root, delete_tree_path);
+    println!("\nBST after deletions saved to {}", delete_tree_path);
+    
+    // Verify structure after deletions
+    println!("\nVerifying structure after deletions:");
+    let post_delete_search = vec![2, 3, 6, 15, 4, 7, 18, 20];
+    for &key in post_delete_search.iter() {
+        print!("Searching for key {}: ", key);
+        if let Some(node) = root.borrow().tree_search(&key) {
+            println!("Found -> {:?}", node.borrow().key);
+        } else {
+            println!("Not found");
+        }
+    }
+    
+    // Check tree properties 
+    let min_node = root.borrow().minimum();
+    println!("\nMinimum key after operations: {:?}", min_node.borrow().key);
+    
+    let max_node = root.borrow().maximum();
+    println!("Maximum key after operations: {:?}", max_node.borrow().key);
+}
+
 #[allow(dead_code)]
 fn test_binary_tree() {
     //create the nodelink of the root node
@@ -205,3 +295,5 @@ fn test_binary_tree() {
     main_tree_path = "prime_t4.dot";
     generate_dotfile(&rootlink, main_tree_path);
 }
+
+
