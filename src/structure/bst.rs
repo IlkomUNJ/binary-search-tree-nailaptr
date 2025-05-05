@@ -260,41 +260,51 @@ impl BstNode {
      * Used as a helper function for tree_delete
      */
     pub fn transplant(root: &BstNodeLink, u: &BstNodeLink, v: Option<BstNodeLink>) {
+        // Get u's parent - we need to clone because we'll mutate later
         let u_parent = BstNode::upgrade_weak_to_strong(u.borrow().parent.clone());
         
         if u_parent.is_none() {
             // u is the root
             if let Some(v_node) = &v {
                 // Copy all data from v to root
-                root.borrow_mut().key = v_node.borrow().key;
-                root.borrow_mut().left = v_node.borrow().left.clone();
-                root.borrow_mut().right = v_node.borrow().right.clone();
+                let v_borrowed = v_node.borrow();
+                let mut root_mut = root.borrow_mut();
+                root_mut.key = v_borrowed.key.clone();
+                root_mut.left = v_borrowed.left.clone();
+                root_mut.right = v_borrowed.right.clone();
                 
                 // Update parent pointers for children
-                if let Some(left_child) = &root.borrow().left {
+                if let Some(left_child) = &root_mut.left {
                     left_child.borrow_mut().parent = Some(Rc::downgrade(root));
                 }
-                if let Some(right_child) = &root.borrow().right {
+                if let Some(right_child) = &root_mut.right {
                     right_child.borrow_mut().parent = Some(Rc::downgrade(root));
                 }
             } else {
                 // Setting root to NIL (empty tree)
-                root.borrow_mut().key = None;
-                root.borrow_mut().left = None;
-                root.borrow_mut().right = None;
+                let mut root_mut = root.borrow_mut();
+                root_mut.key = None;
+                root_mut.left = None;
+                root_mut.right = None;
             }
         } else {
             let parent = u_parent.unwrap();
             
             // Determine if u is left or right child of its parent
-            let is_left_child = parent.borrow().left.as_ref().map_or(false, |child| 
-                BstNode::is_node_match(child, u));
+            let is_left_child = {
+                let parent_borrow = parent.borrow();
+                parent_borrow.left.as_ref().map_or(false, |child| 
+                    BstNode::is_node_match(child, u))
+            };
             
             // Replace u with v in parent's child pointer
-            if is_left_child {
-                parent.borrow_mut().left = v.clone();
-            } else {
-                parent.borrow_mut().right = v.clone();
+            {
+                let mut parent_mut = parent.borrow_mut();
+                if is_left_child {
+                    parent_mut.left = v.clone();
+                } else {
+                    parent_mut.right = v.clone();
+                }
             }
             
             // Update v's parent pointer if v is not None
@@ -310,66 +320,74 @@ impl BstNode {
     */
     pub fn tree_delete(&mut self, root: &BstNodeLink, key: i32) -> bool {
         // First find the node to delete
-        if let Some(z) = self.tree_search(&key) {
-            // Case 1: z has no left child
-            if z.borrow().left.is_none() {
-                BstNode::transplant(root, &z, z.borrow().right.clone());
-            } 
-            // Case 2: z has left child but no right child
-            else if z.borrow().right.is_none() {
-                BstNode::transplant(root, &z, z.borrow().left.clone());
-            } 
-            // Case 3: z has both children
-            else {
-                // Store values we need before modifying anything
-                let z_right = z.borrow().right.clone();
-                let z_left = z.borrow().left.clone();
-                
-                // Find successor (minimum in right subtree)
-                let y = z_right.as_ref().unwrap().borrow().minimum();
-                
-                // Check if y is the immediate right child of z or not
-                let y_is_direct_child = BstNode::is_node_match(&y, z_right.as_ref().unwrap());
-                
-                // If y is not the immediate right child of z
-                if !y_is_direct_child {
-                    // First get y's right child (y never has a left child as it's a minimum)
-                    let y_right = y.borrow().right.clone();
-                    
-                    // Transplant y with its right child
-                    BstNode::transplant(root, &y, y_right);
-                    
-                    // Set y's right child to z's right child
-                    y.borrow_mut().right = z_right;
-                    
-                    // Update parent pointer of y's new right child
-                    if let Some(right) = &y.borrow().right {
-                        right.borrow_mut().parent = Some(Rc::downgrade(&y));
-                    }
-                }
-                
-                // Now transplant z with y
-                BstNode::transplant(root, &z, Some(y.clone()));
-                
-                // Set y's left child to z's left child
-                y.borrow_mut().left = z_left;
-                
-                // Update parent pointer of y's new left child
-                if let Some(left) = &y.borrow().left {
-                    left.borrow_mut().parent = Some(Rc::downgrade(&y));
-                }
-                
-                // If y wasn't the immediate right child of z, we already handled the right child pointer above
-                // Otherwise, we need to set it here
-                if y_is_direct_child {
-                    // Preserve y's original right child
-                    // y.borrow_mut().right is already set correctly in this case
-                }
-            }
-            return true;
+        let node_to_delete = self.tree_search(&key);
+        if node_to_delete.is_none() {
+            return false; // Key not found
         }
         
-        false // Key not found
+        let z = node_to_delete.unwrap();
+        
+        // Create clones of z's children to avoid borrow issues
+        let z_left = z.borrow().left.clone();
+        let z_right = z.borrow().right.clone();
+        
+        // Case 1: z has no left child
+        if z_left.is_none() {
+            BstNode::transplant(root, &z, z_right);
+        } 
+        // Case 2: z has left child but no right child
+        else if z_right.is_none() {
+            BstNode::transplant(root, &z, z_left);
+        } 
+        // Case 3: z has both children
+        else {
+            // Find successor (minimum in right subtree)
+            let y = {
+                let y_find = z_right.as_ref().unwrap().borrow().minimum();
+                y_find.clone()
+            };
+            
+            // Get y's right child (y never has a left child as it's a minimum)
+            let y_right = y.borrow().right.clone();
+            
+            // Check if y is the immediate right child of z
+            let y_is_direct_child = {
+                let z_right_node = z_right.as_ref().unwrap();
+                BstNode::is_node_match(&y, z_right_node)
+            };
+            
+            // If y is not the immediate right child of z
+            if !y_is_direct_child {
+                // Transplant y with its right child
+                BstNode::transplant(root, &y, y_right.clone());
+                
+                // Set y's right child to z's right child and update parent pointer
+                {
+                    let mut y_mut = y.borrow_mut();
+                    y_mut.right = z_right.clone();
+                }
+                
+                // Update parent pointer of z's right child
+                if let Some(right) = &z_right {
+                    right.borrow_mut().parent = Some(Rc::downgrade(&y));
+                }
+            }
+            
+            // Now transplant z with y
+            BstNode::transplant(root, &z, Some(y.clone()));
+            
+            // Set y's left child to z's left child and update parent pointer
+            {
+                let mut y_mut = y.borrow_mut();
+                y_mut.left = z_left.clone();
+            }
+            
+            // Update parent pointer of z's left child
+            if let Some(left) = &z_left {
+                left.borrow_mut().parent = Some(Rc::downgrade(&y));
+            }
+        }
+        
+        true
     }
-    
 }

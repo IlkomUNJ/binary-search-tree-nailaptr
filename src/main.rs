@@ -129,6 +129,11 @@ fn test_bst_operations() {
     println!("Testing tree_insert operation:");
     let keys_to_insert = vec![15, 6, 18, 3, 7, 17, 20, 2, 4, 13, 9];
     
+    // Generate initial empty tree
+    let initial_tree_path = "bst_graph.dot";
+    generate_dotfile_bst(&root, initial_tree_path);
+    println!("Initial empty BST saved to {}", initial_tree_path);
+    
     for &key in keys_to_insert.iter() {
         root.borrow_mut().tree_insert(&root, key);
         println!("Inserted key: {}", key);
@@ -151,42 +156,78 @@ fn test_bst_operations() {
         }
     }
     
+    // Test transplant operation
+    println!("\nTesting transplant operation:");
+    // Find nodes to transplant - using nodes that definitely exist
+    {
+        if let Some(node_3) = root.borrow().tree_search(&3) {
+            if let Some(node_4) = root.borrow().tree_search(&4) {
+                // Transplant node 4 to replace node 3
+                BstNode::transplant(&root, &node_3, Some(node_4.clone()));
+                
+                // Generate DOT file after transplant
+                let transplant_tree_path = "bst_after_transplant.dot";
+                generate_dotfile_bst(&root, transplant_tree_path);
+                println!("BST after transplant saved to {}", transplant_tree_path);
+            }
+        }
+    }
+    
     // Test tree_delete
     println!("\nTesting tree_delete operation:");
     
     // Test case 1: Delete a leaf node (2)
     println!("1. Deleting leaf node (2)");
-    let deleted = root.borrow_mut().tree_delete(&root, 2);
-    println!("   Deletion successful: {}", deleted);
+    {
+        // Clone the root to ensure we're working with a fresh reference
+        let root_clone = root.clone();
+        let deleted = root_clone.borrow_mut().tree_delete(&root_clone, 2);
+        println!("   Deletion successful: {}", deleted);
+        
+        // Generate DOT file after first deletion
+        let delete_tree_path = "bst_after_delete.dot";
+        generate_dotfile_bst(&root_clone, delete_tree_path);
+        println!("BST after first deletion saved to {}", delete_tree_path);
+    }
     
-    // Test case 2: Delete a node with one child (3)
-    println!("2. Deleting node with one child (3)");
-    let deleted = root.borrow_mut().tree_delete(&root, 3);
-    println!("   Deletion successful: {}", deleted);
+    // Test case 2: Delete a node with one child (4)
+    println!("2. Deleting node with one child (4)");
+    {
+        let deleted = root.borrow_mut().tree_delete(&root, 4);
+        println!("   Deletion successful: {}", deleted);
+    }
     
-    // Test case 3: Delete a node with two children (6)
-    println!("3. Deleting node with two children (6)");
-    let deleted = root.borrow_mut().tree_delete(&root, 6);
-    println!("   Deletion successful: {}", deleted);
+    // Test case 3: Delete a node with two children (7)
+    println!("3. Deleting node with two children (7)");
+    {
+        let deleted = root.borrow_mut().tree_delete(&root, 7);
+        println!("   Deletion successful: {}", deleted);
+    }
     
     // Test case 4: Delete the root (15)
     println!("4. Deleting root node (15)");
-    let deleted = root.borrow_mut().tree_delete(&root, 15);
-    println!("   Deletion successful: {}", deleted);
+    {
+        let deleted = root.borrow_mut().tree_delete(&root, 15);
+        println!("   Deletion successful: {}", deleted);
+    }
     
     // Test case 5: Try to delete a non-existent key
     println!("5. Deleting non-existent node (99)");
-    let deleted = root.borrow_mut().tree_delete(&root, 99);
-    println!("   Deletion successful: {}", deleted);
+    {
+        let deleted = root.borrow_mut().tree_delete(&root, 99);
+        println!("   Deletion successful: {}", deleted);
+    }
     
-    // Generate DOT file after deletions
-    let delete_tree_path = "bst_after_delete.dot";
-    generate_dotfile_bst(&root, delete_tree_path);
-    println!("\nBST after deletions saved to {}", delete_tree_path);
+    // Generate final DOT file after all deletions
+    {
+        let final_tree_path = "bst_final.dot";
+        generate_dotfile_bst(&root, final_tree_path);
+        println!("Final BST state saved to {}", final_tree_path);
+    }
     
     // Verify structure after deletions
     println!("\nVerifying structure after deletions:");
-    let post_delete_search = vec![2, 3, 6, 15, 4, 7, 18, 20];
+    let post_delete_search = vec![2, 3, 4, 7, 15, 17, 18, 20];
     for &key in post_delete_search.iter() {
         print!("Searching for key {}: ", key);
         if let Some(node) = root.borrow().tree_search(&key) {
@@ -295,5 +336,3 @@ fn test_binary_tree() {
     main_tree_path = "prime_t4.dot";
     generate_dotfile(&rootlink, main_tree_path);
 }
-
-
